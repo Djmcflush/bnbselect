@@ -1,0 +1,8 @@
+typing  
+langchain.llms  
+langchain.prompts
+transformers 
+torch
+pinecone
+
+
