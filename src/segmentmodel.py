@@ -5,9 +5,9 @@ import torch
 
 def caption_model():
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+    processor = Blip2Processor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = Blip2Model.from_pretrained(
-        "Salesforce/blip2-opt-2.7b", torch_dtype=torch.float16
+        "Salesforce/blip-image-captioning-large", torch_dtype=torch.float16
     )
     model.to(device)
     return model, processor

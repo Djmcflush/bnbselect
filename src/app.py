@@ -1,7 +1,10 @@
 from segmentmodel import catpion_model
 from typing import List
 from langchain.llms import OpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
+
 from airbnb_model import (
     airbnb_output_parser,
     final_listing_parser,
@@ -9,13 +12,9 @@ from airbnb_model import (
     FinalListingData,
 )
 import requests
-from listings import (
-    read_listings_from_pinecone_db,
-    write_to_pinecone_db,
-    fetch_top_k_from_pinecone_db,
-    embed_text_with_pinecone,
-)
+from listings import read_listings_from_pinecone_db
 import os
+from PIL import Image
 
 OPEN_AI_API_KEY = os.environ.get("OPEN_AI_API_KEY")
 PINECONE_AIRBNB_EMDEDDING_INDEX = os.environ.get("PINECONE_EMBEDDING_INDEX_NAME")
@@ -38,8 +37,9 @@ def prediction_pipeline(image, iterate_over_airbnb_fields=False):
 
 
 def caption_prediction(image, field):
-    inputs = processor(raw_image, field, return_tensors="pt")
-    return catpion_model.generate(**inputs)
+    inputs = processor(image, field, return_tensors="pt")
+    outputs = catpion_model.generate(**inputs)
+    return processor.decode(outputs[0], skip_special_tokens=True)
 
 
 def airbnb_prediction(query):
@@ -68,8 +68,7 @@ def disambiguate_query(query):
     temperature = 0.0
     model = OpenAI(model_name=model_name, temperature=temperature)
 
-    output = model(_input.to_string())
-    return output
+    return model(_input.to_string())
 
 
 def captioning_machine(images):
@@ -95,10 +94,14 @@ def create_final_text(description, captions, disambiguation):
     return data.to_json()
 
 
+def write_to_db(data):
+    pass
+
+
 def process_listing(listing):
-    raw_images = listing.get("images")
+    raw_images = listing.get("photos")
     images = []
-    for image in images:
+    for image in raw_images:
         im = Image.open(requests.get(image, stream=True).raw)
         images.append(im)
 
@@ -110,12 +113,15 @@ def process_listing(listing):
     disambiguated = disambiguate(formated_description, captions)
     # come up with some final data format???
     final_data = create_final_text(description, captions, disambiguated)
-    embedding = embed_text_with_pinecone(final_data)
-
-    write_to_pinecone_db(PINECONE_AIRBNB_EMDEDDING_INDEX, embedding)
+    return final_data
 
 
 def main():
     listings = read_listings_from_pinecone_db("Index name")
+    p_listings = []
     for listing in listings:
         process_listing(listing)
+    vectorstore = Chroma.from_documents(
+        documents=p_listings, embedding=OpenAIEmbeddings()
+    )
+    vectorstore.save("AirbnbListings")

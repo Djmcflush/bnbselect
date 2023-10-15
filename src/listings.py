@@ -11,10 +11,6 @@ def read_listings_from_pinecone_db():
     return pinecone.fetch(PINECONE_AIRBNB_RAW_INDEX)
 
 
-def write_to_pinecone_db(index_name, data):
-    pinecone.upsert(index_name=index_name, items=data)
-
-
 def fetch_top_k_from_pinecone_db(index_name, query_vector, top_k):
     return pinecone.query(index_name=index_name, queries=query_vector, top_k=top_k)
 
