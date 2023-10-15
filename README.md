@@ -4,7 +4,7 @@
 TOO MANY CHOICES! Give me quality recomendations!
 
 Have you ever gone on Airbnb and still had 200+ options to choose from even after you put in all your filters? 
-What if someone could just go through all the descriptions, reviews, and images to narrow down to options you might ACTUALLY be interested in? 
+What if someone could just go through all the descriptions, reviews, and images for you to narrow down the options to ones you might ACTUALLY be interested in? 
 
 **bnbselect** is an autonomous agent who will narrow down airbnb options for you.
 By entering your preferences, bnbselect will remember your information, scrape all the texts and the images, and curate a list of top matches just for you.
