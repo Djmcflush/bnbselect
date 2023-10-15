@@ -1,6 +1,6 @@
 from langchain.output_parsers import PydanticOutputParser
 from langchain.pydantic_v1 import BaseModel, Field  # validator
-
+from typing import List
 
 class AirbnbListing(BaseModel):
     pool: bool = Field(description="Is there a pool in the image")
@@ -53,13 +53,15 @@ def airbnb_output_parser():
     return PydanticOutputParser(pydantic_object=AirbnbListing)
 
 
+
+
 class FinalListingData(BaseModel):
     description: str = Field(description="The description of the listing")
     caption: AirbnbListing = Field(description="The airbnb data of the listing")
-    matching_text_images: bool = Field(
-        description="Did the description match the image"
-    )
-
+    url: str = Field(description="The url of the listing")
+    price: float = Field(description="The price of the listing")
+    images: List[str] = Field(description="The image urls of the listing")
+    reviews: List[str] = Field(description="The reviews of the listing")
 
 def final_listing_parser():
     return PydanticOutputParser(pydantic_object=FinalListingData)

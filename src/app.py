@@ -4,6 +4,8 @@ from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.prompts import PromptTemplate
+from json import dumps
+from langchain.docstore.document import Document
 
 from airbnb_model import (
     airbnb_output_parser,
@@ -12,14 +14,10 @@ from airbnb_model import (
     FinalListingData,
 )
 import requests
-from listings import read_listings_from_pinecone_db
 import os
 from PIL import Image
 
-OPEN_AI_API_KEY = os.environ.get("OPEN_AI_API_KEY")
-PINECONE_AIRBNB_EMDEDDING_INDEX = os.environ.get("PINECONE_EMBEDDING_INDEX_NAME")
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
-
+OPEN_AI_API_KEY = os.environ.get("OPENAI_API_KEY")
 caption_model, processor = catpion_model()
 read_index = os.environ.get("READ_INDEX")
 write_index = os.environ.get("WRITE_INDEX")
@@ -83,19 +81,14 @@ def captioning_machine(images):
 def disambiguate(description, caption):
     # do something to the data to "disambiguate it"
     # most likely just prompt it like this:
-    return disambiguate_query(description.to_json() + caption.to_json())
+    return disambiguate_query(description.json() + caption.json())
 
 
-def create_final_text(description, captions, disambiguation):
-    # we need to update this!!!! TODO
+def create_final_text(description, captions, disambiguation, url, price, images, reviews):
     data = FinalListingData(
-        description=description, caption=captions, matching_text_images=disambiguation
+        description=description, caption=captions, matching_text_images=disambiguation, url=url, price=price, images=images, reviews=reviews
     )
-    return data.to_json()
-
-
-def write_to_db(data):
-    pass
+    return create_document(data)
 
 
 def process_listing(listing):
@@ -107,20 +100,33 @@ def process_listing(listing):
 
     description = listing.get(
         "description"
-    )  # still need to figure out description format #TODO
+    )
     captions = captioning_machine(images)
-    formated_description = airbnb_prediction(description)
-    disambiguated = disambiguate(formated_description, captions)
-    # come up with some final data format???
-    final_data = create_final_text(description, captions, disambiguated)
-    return final_data
+    disambiguated = disambiguate(description, captions)
+    return create_final_text(description, captions, disambiguated, listing.get("url"), listing.get("price"), raw_images[0], listing.get('reviews'))
 
+def read_data():
+    return dumps('documents.json')
+
+
+def create_document(final_text):
+    document =  Document(
+        page_content=final_text.description,
+        metadata={
+            "captions": final_text.caption,
+            "disambiguated": final_text.matching_text_images,
+            "url": final_text.url,
+            "price": final_text.price,
+            "image_url": final_text.images,
+            "reviews": final_text.reviews
+        }
+    )
+    return document
 
 def main():
-    listings = read_listings_from_pinecone_db("Index name")
-    p_listings = []
-    for listing in listings:
-        process_listing(listing)
+    listings = read_data()
+    p_listings = [process_listing(listing) for listing in listings]
+
     vectorstore = Chroma.from_documents(
         documents=p_listings, embedding=OpenAIEmbeddings()
     )
