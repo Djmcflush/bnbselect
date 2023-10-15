@@ -2,8 +2,9 @@ import pinecone
 
 import os
 
-PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
-PINECONE_AIRBNB_RAW_INDEX = os.environ.get('PINECONE_AIRBNB_RAW_INDEX')
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+PINECONE_AIRBNB_RAW_INDEX = os.environ.get("PINECONE_AIRBNB_RAW_INDEX")
+
 
 def read_listings_from_pinecone_db():
     # Assuming pinecone is already imported and initialized

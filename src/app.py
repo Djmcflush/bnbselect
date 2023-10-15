@@ -2,7 +2,12 @@ from segmentmodel import catpion_model
 from typing import List
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from airbnb_model import airbnb_output_parser, final_listing_parser, AirbnbListing, FinalListingData
+from airbnb_model import (
+    airbnb_output_parser,
+    final_listing_parser,
+    AirbnbListing,
+    FinalListingData,
+)
 import requests
 from listings import (
     read_listings_from_pinecone_db,
@@ -12,13 +17,14 @@ from listings import (
 )
 import os
 
-OPEN_AI_API_KEY = os.environ.get('OPEN_AI_API_KEY')
-PINECONE_AIRBNB_EMDEDDING_INDEX = os.environ.get('PINECONE_EMBEDDING_INDEX_NAME')
-PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
+OPEN_AI_API_KEY = os.environ.get("OPEN_AI_API_KEY")
+PINECONE_AIRBNB_EMDEDDING_INDEX = os.environ.get("PINECONE_EMBEDDING_INDEX_NAME")
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
 
 caption_model, processor = catpion_model()
 read_index = os.environ.get("READ_INDEX")
 write_index = os.environ.get("WRITE_INDEX")
+
 
 def prediction_pipeline(image, iterate_over_airbnb_fields=False):
     captions = []
@@ -76,7 +82,6 @@ def captioning_machine(images):
 
 # Streamlit app
 def disambiguate(description, caption):
-    
     # do something to the data to "disambiguate it"
     # most likely just prompt it like this:
     return disambiguate_query(description.to_json() + caption.to_json())
@@ -84,7 +89,9 @@ def disambiguate(description, caption):
 
 def create_final_text(description, captions, disambiguation):
     # we need to update this!!!! TODO
-    data = FinalListingData(description=description, caption=captions, matching_text_images=disambiguation)
+    data = FinalListingData(
+        description=description, caption=captions, matching_text_images=disambiguation
+    )
     return data.to_json()
 
 
@@ -94,8 +101,10 @@ def process_listing(listing):
     for image in images:
         im = Image.open(requests.get(image, stream=True).raw)
         images.append(im)
-    
-    description = listing.get("description") #still need to figure out description format #TODO
+
+    description = listing.get(
+        "description"
+    )  # still need to figure out description format #TODO
     captions = captioning_machine(images)
     formated_description = airbnb_prediction(description)
     disambiguated = disambiguate(formated_description, captions)
