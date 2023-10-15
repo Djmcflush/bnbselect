@@ -1,4 +1,4 @@
-from segmentmodel import catpion_model
+from segmentmodel import caption_model as CaptionModel
 from typing import List
 from langchain.llms import OpenAI
 from langchain.embeddings import OpenAIEmbeddings
@@ -18,7 +18,7 @@ import os
 from PIL import Image
 
 OPEN_AI_API_KEY = os.environ.get("OPENAI_API_KEY")
-caption_model, processor = catpion_model()
+caption_model, processor = CaptionModel()
 read_index = os.environ.get("READ_INDEX")
 write_index = os.environ.get("WRITE_INDEX")
 
@@ -26,47 +26,56 @@ write_index = os.environ.get("WRITE_INDEX")
 def prediction_pipeline(image, iterate_over_airbnb_fields=False):
     captions = []
     if not iterate_over_airbnb_fields:
-        return caption_prediction(image, field="Describe All the objects in this image")
-    captions = []
-    for field in AirbnbListing.__fields__:
-        caption = caption_prediction(image, field.description)
-        captions.append(caption)
-    return " ".join(captions)
+        captions =  caption_prediction(image, field="Describe All the objects in this image")
+        return captions
+    # captions = []
+    # for field in AirbnbListing.__fields__:
+    #     caption = caption_prediction(image, field.description)
+    #     captions.append(caption)
+    #return " ".join(captions)
 
 
 def caption_prediction(image, field):
     inputs = processor(image, field, return_tensors="pt")
-    outputs = catpion_model.generate(**inputs)
+    outputs = caption_model.generate(**inputs)
     return processor.decode(outputs[0], skip_special_tokens=True)
 
 
 def airbnb_prediction(query):
-    _input = prompt.format_prompt(query=query)
     parser = airbnb_output_parser()
-    prompt = PromptTemplate(
-        template="Describe all the features and amenities inside of this description.\n{format_instructions}\n{query}\n",
-        input_variables=["query"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-    model_name = "chatgpt-3.5"
+    #if type(query) == List:
+    final_query = " ".join(query)
+    
+    # prompt = PromptTemplate(
+    #     template="Describe all the features and amenities inside of this description.\n{format_instructions}\n{query}\n",
+    #     input_variables=["query"],
+    #     partial_variables={"format_instructions": parser.get_format_instructions()},
+    # )
     temperature = 0.0
+    model_name = "text-davinci-003"
     model = OpenAI(model_name=model_name, temperature=temperature)
 
-    output = model(_input.to_string())
-    return parser.parse(output)
+    # _input = prompt.format_prompt(query=query)
+    result = model(final_query)
+    #result = parser.parse(output)
+    return result
 
 
 def disambiguate_query(query):
-    _input = prompt.format_prompt(query=query)
-    prompt = PromptTemplate(
-        template="Are these two object describing the same listing? \n{format_instructions}\n{query}\n",
-        input_variables=["query"],
-    )
-    model_name = "chatgpt-3.5"
+    if type(query) == List:
+        query = " ".join(query)
+    query_prompt= f"Describe all the features and amenities inside of this description.\n{query}\n"
+    # prompt = PromptTemplate(
+    #     template="Are these two object describing the same listing? \n{format_instructions}\n{query}\n",
+    #     input_variables=["query"],
+    # )
+    # _input = prompt.format_prompt(query=query)
+
+    model_name = "text-davinci-003"
     temperature = 0.0
     model = OpenAI(model_name=model_name, temperature=temperature)
 
-    return model(_input.to_string())
+    return model(query_prompt)
 
 
 def captioning_machine(images):
@@ -81,12 +90,12 @@ def captioning_machine(images):
 def disambiguate(description, caption):
     # do something to the data to "disambiguate it"
     # most likely just prompt it like this:
-    return disambiguate_query(description.json() + caption.json())
+    return disambiguate_query(description + caption)
 
 
-def create_final_text(description, captions, disambiguation, url, price, images, reviews):
+def create_final_text(description, captions, disambiguated_text, url, price, images, reviews):
     data = FinalListingData(
-        description=description, caption=captions, matching_text_images=disambiguation, url=url, price=price, images=images, reviews=reviews
+        description=description, caption=captions, disambiguated_text=disambiguated_text, url=url, price=price, images=images, reviews=reviews
     )
     return create_document(data)
 
@@ -105,29 +114,40 @@ def process_listing(listing):
     disambiguated = disambiguate(description, captions)
     return create_final_text(description, captions, disambiguated, listing.get("url"), listing.get("price"), raw_images[0], listing.get('reviews'))
 
+
 def read_data():
-    return dumps('documents.json')
-
-
+    with open('documents.json', 'r') as f:
+        documents = json.load(f)
+    return documents
 def create_document(final_text):
     document =  Document(
         page_content=final_text.description,
         metadata={
             "captions": final_text.caption,
-            "disambiguated": final_text.matching_text_images,
+            "disambiguated": final_text.disambiguated_text,
             "url": final_text.url,
             "price": final_text.price,
             "image_url": final_text.images,
             "reviews": final_text.reviews
         }
     )
+
     return document
+import json
+def write_to_file(listing):
+    with open("processed_listings.json", "a") as f:
+        json.dump(listing, f)
+        f.write('\n')
 
 def main():
     listings = read_data()
-    p_listings = [process_listing(listing) for listing in listings]
+    for listing in listings:
+        p_listing = process_listing(listing)
+        write_to_file(p_listing.json())
 
-    vectorstore = Chroma.from_documents(
-        documents=p_listings, embedding=OpenAIEmbeddings()
-    )
-    vectorstore.save("AirbnbListings")
+
+if __name__ == "__main__":
+    main()
+
+
+    
