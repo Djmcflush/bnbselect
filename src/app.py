@@ -2,7 +2,7 @@ from segmentmodel import catpion_model
 from typing import List
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from airbnb_model import airbnb_output_parser, AirbnbListing
+from airbnb_model import airbnb_output_parser, final_listing_parser, AirbnbListing, FinalListingData
 import requests
 from listings import (
     read_listings_from_pinecone_db,
@@ -55,7 +55,7 @@ def airbnb_prediction(query):
 def disambiguate_query(query):
     _input = prompt.format_prompt(query=query)
     prompt = PromptTemplate(
-        template="Describe all the features and amenities inside of this description.\n{format_instructions}\n{query}\n",
+        template="Are these two object describing the same listing? \n{format_instructions}\n{query}\n",
         input_variables=["query"],
     )
     model_name = "chatgpt-3.5"
@@ -76,15 +76,16 @@ def captioning_machine(images):
 
 # Streamlit app
 def disambiguate(description, caption):
-    # TODO
+    
     # do something to the data to "disambiguate it"
     # most likely just prompt it like this:
-    return disambiguate_query(description + caption)
+    return disambiguate_query(description.to_json() + caption.to_json())
 
 
-def create_final_text(descriptions, captions, disambiguation):
+def create_final_text(description, captions, disambiguation):
     # we need to update this!!!! TODO
-    return descriptions + captions + disambiguation
+    data = FinalListingData(description=description, caption=captions, matching_text_images=disambiguation)
+    return data.to_json()
 
 
 def process_listing(listing):
@@ -99,8 +100,8 @@ def process_listing(listing):
     formated_description = airbnb_prediction(description)
     disambiguated = disambiguate(formated_description, captions)
     # come up with some final data format???
-    final_data_format = create_final_text(formated_description, captions, disambiguated)
-    embedding = embed_text_with_pinecone(final_data_format)
+    final_data = create_final_text(description, captions, disambiguated)
+    embedding = embed_text_with_pinecone(final_data)
 
     write_to_pinecone_db(PINECONE_AIRBNB_EMDEDDING_INDEX, embedding)
 

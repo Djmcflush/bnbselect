@@ -51,3 +51,11 @@ class AirbnbListing(BaseModel):
 
 def airbnb_output_parser():
     return PydanticOutputParser(pydantic_object=AirbnbListing)
+
+
+class FinalListingData(BaseModel):
+    description: str = Field(description="The description of the listing")
+    caption: AirbnbListing = Field(description="The airbnb data of the listing")
+    matching_text_images: bool = Field(description="Did the description match the image")
+def final_listing_parser():
+    return PydanticOutputParser(pydantic_object=FinalListingData)
