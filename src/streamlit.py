@@ -6,17 +6,19 @@ from langchain.docstore.document import Document
 import json
 import os
 import requests
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
-OPEN_AI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+embeddings = HuggingFaceEmbeddings()
 
 def main():
     st.title("Retrieval Access Generation Pipeline")
 
     st.sidebar.title("Options")
-    st.sidebar.subheader("Listings Display Options")
-    num_listings = st.sidebar.slider("Number of listings to display", 1, 6, 4)
+    st.sidebar.subheader("Record Display Options")
+    num_listings = st.sidebar.slider("Number of Records to display", 1, 6, 4)
 
-    st.header("Describe the Airbnb Listing you want")
+    st.header("Describe the record you need")
     query = st.text_input("")
     decoder = json.JSONDecoder()
     json_query = []
@@ -48,9 +50,11 @@ def main():
         except:
             pass
         print(len(documents))
-    
+    # llm = HuggingFacePipeline(pipeline=pipeline)
+
+
     chroma_search = Chroma.from_documents(
-        documents=documents, embedding=OpenAIEmbeddings(openai_api_key=OPEN_AI_API_KEY)
+        documents=documents, embedding=embeddings
     )    # chroma_search = Chroma.load("AirbnbListings")
     chroma_search.as_retriever(
         search_type="mmr", search_kwargs={"k": num_listings, "lambda_mult": 0.25}
@@ -62,22 +66,23 @@ def main():
         st.write("")
         st.write("Processing...")
 
-        st.subheader("Generated Captions")
+        st.subheader("Generated Records")
         # st.write(results)
         images = []
         for result in results:
             raw_image = result.metadata.get("image_url")
             images.append(Image.open(requests.get(raw_image, stream=True).raw))
 
-        st.write("Here are the listings that match your description:")
+        st.write("Here are the records that match your description:")
         for i, result in enumerate(results):
             st.write(f"Listing {i+1}:")
             st.image(images[i])
             st.write(result.page_content)
-            st.write(result.metadata.get("price"))
+            st.write(result.metadata.get("clasification", "CONFIDENTIAL"))
+            st.write(result.metadata.get("NTK", "NTK11, NTK13"))
             st.write(result.metadata.get("url"))
 
-        st.write("Listings processed and saved.")
+        st.write("Records processed and deleted.")
 
 
 if __name__ == "__main__":
